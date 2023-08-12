@@ -74,6 +74,7 @@ class Pricing(Base):
     name = Column(String, nullable= False)
     price = Column(Numeric, nullable= False)
     days = Column(Numeric, nullable= False)
+    status = Column(Boolean, nullable=False, server_default='True') #True: kich hoat, False: vo hieu hoa
     
 # Payment of a user
 class Payment(Base):
@@ -83,6 +84,7 @@ class Payment(Base):
     pricing_id = Column(Integer,ForeignKey("pricing.id", ondelete="CASCADE"), nullable=True)
     film_id = Column(Integer,ForeignKey("film.id", ondelete="CASCADE"), nullable=True)
     pay = Column(Integer,nullable=False)
+    status = Column(Integer,nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
     end_date = Column(TIMESTAMP(timezone=True), nullable=False)
     

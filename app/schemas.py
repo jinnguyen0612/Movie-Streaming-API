@@ -12,6 +12,10 @@ from decimal import Decimal
 
 
 #user
+class Register(BaseModel):
+    email:EmailStr
+    password: str
+    name: str
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -81,6 +85,6 @@ class Pricing(BaseModel):
     name: str
     price: Decimal
     days: Decimal
+    status:bool
 class PricingOut(Pricing):
     id: int
-    

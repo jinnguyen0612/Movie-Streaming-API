@@ -23,6 +23,9 @@ router = APIRouter(
 #POST
 @router.post('/create', status_code=status.HTTP_201_CREATED)
 async def create_film(film:schemas.FilmBase,db: Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
+    film_check = db.query(models.Film).filter(models.Film.title == film.title)
+    if film_check!= None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Film title conflict")
     new_film = models.Film(**film.dict())
     db.add(new_film)
     db.commit()
@@ -108,7 +111,7 @@ def get_top_favorite_films(db: Session = Depends(get_db)):
     subquery = db.query(
         models.Favorite_Film.film_id,
         func.count(models.Favorite_Film.film_id).label("count")
-    ).group_by(models.Favorite_Film.film_id).order_by(text("count DESC")).limit(10).subquery()
+    ).group_by(models.Favorite_Film.film_id).order_by(text("count DESC")).limit(8).subquery()
 
     top_favorite_films = db.query(models.Film).join(subquery, models.Film.id == subquery.c.film_id).all()
 
@@ -129,7 +132,7 @@ async def get_top_rated_films(db: Session = Depends(get_db)):
             desc("avg_rating"),
             desc("vote_count")
         ) \
-        .limit(10) \
+        .limit(8) \
         .all()
 
     film_list_with_avg_rating = []
@@ -186,6 +189,9 @@ def get_favorite_films(db: Session = Depends(get_db),current_user: int = Depends
 @router.put('/edit/{film_id}')
 async def update_film(film_id:int, edit_film: schemas.FilmBase,db:Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
     try:
+        film_check = db.query(models.Film).filter(models.Film.title == edit_film.title).first()
+        if film_check != None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Film title conflict")
         film_query = db.query(models.Film).filter(models.Film.id == film_id)
         film = film_query.first()
         
