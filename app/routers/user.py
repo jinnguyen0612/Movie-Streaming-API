@@ -43,6 +43,11 @@ async def get_all_customer(db:Session = Depends(get_db),current_user: int = Depe
     customer = db.query(models.User).filter(models.User.role==1).all()
     return customer
 
+@router.get('/getFavoriteMovie',response_model=List[schemas.UserFavoriteFilm])
+async def get_favorite_movie(db:Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
+    film = db.query(models.Favorite_Film).filter(models.Favorite_Film.user_id==current_user.id).all()
+    return film
+
 @router.get('/profile',response_model=schemas.ProfileOut)
 async def get_profile(db:Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
     user = db.query(models.User).filter(models.User.id==current_user.id).first()

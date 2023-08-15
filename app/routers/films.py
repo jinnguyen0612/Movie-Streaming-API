@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from typing import Optional, Text,List
 from sqlalchemy.sql import text
 from sqlalchemy import func
+from sqlalchemy import desc
+
 
 
 from ..database import get_db
@@ -23,8 +25,8 @@ router = APIRouter(
 #POST
 @router.post('/create', status_code=status.HTTP_201_CREATED)
 async def create_film(film:schemas.FilmBase,db: Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
-    film_check = db.query(models.Film).filter(models.Film.title == film.title)
-    if film_check!= None:
+    film_check = db.query(models.Film).filter(models.Film.title == film.title).first()
+    if film_check:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Film title conflict")
     new_film = models.Film(**film.dict())
     db.add(new_film)
@@ -32,31 +34,39 @@ async def create_film(film:schemas.FilmBase,db: Session = Depends(get_db),curren
     db.refresh(new_film)
     return {"msg":"Create success"}
 
-@router.post("/addActors/{film_id}",status_code=status.HTTP_201_CREATED)
-def add_actors_to_film(film_id: int, actor_ids: List[int], db: Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
+@router.post("/addActors/{film_id}/{actor_id}", status_code=status.HTTP_201_CREATED)
+def add_actor_to_film(
+    film_id: int,
+    actor_id: int,
+    db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user)
+):
     film = db.query(models.Film).get(film_id)
-    
+
     if not film:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Film not found")
-    
-    for actor_id in actor_ids:
-        actor = db.query(models.Actor).get(actor_id)
-        if not actor:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Actor with id {actor_id} not found")
-        
-        film_actor = models.Film_Actor(film_id=film_id, actor_id=actor_id)
-        db.add(film_actor)
-    
+
+    actor = db.query(models.Actor).get(actor_id)
+    if not actor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Actor with id {actor_id} not found")
+
+    film_actor = models.Film_Actor(film_id=film_id, actor_id=actor_id)
+    db.add(film_actor)
+
     db.commit()
     db.refresh(film)
-    
-    return {"msg":"Add actors to film success"}
+
+    return {"msg": "Add actor to film success"}
+
 
 @router.post("/addFavoriteFilm/{film_id}", status_code=status.HTTP_201_CREATED)
 def add_favorite_film(film_id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     film = db.query(models.Film).get(film_id)
     if not film:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Film not found")
+    checkFavorite = db.query(models.Favorite_Film).filter(models.Favorite_Film.film_id == film_id, models.Favorite_Film.user_id == current_user.id).first()
+    if checkFavorite:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Film had been added")
 
     favorite_film = models.Favorite_Film(user_id=current_user.id, film_id=film_id)
     db.add(favorite_film)
@@ -99,9 +109,29 @@ async def get_active_films(db:Session = Depends(get_db)):
     films = db.query(models.Film).filter(models.Film.status==True).all()
     return films
 
+@router.get('/getLatestActive', response_model=List[schemas.FilmDetailOut])
+async def get_latest_active_films(db: Session = Depends(get_db)):
+    films = db.query(models.Film).filter(models.Film.status == True).order_by(models.Film.add_at.desc()).limit(5).all()
+    film_details = []
+    for film in films:
+        film_detail = schemas.FilmDetailOut(
+            **film.__dict__,
+            genre=schemas.GenreOut(**film.genre.__dict__)
+        )
+        film_details.append(film_detail)
+    return film_details
+
+
 @router.get('/get/{film_id}', response_model=schemas.FilmDetailOut)
 async def get_film(film_id: int, db:Session=Depends(get_db)):
     film = db.query(models.Film).filter(models.Film.id==film_id).first()
+    if not film:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Film does not exist")
+    return film
+
+@router.get('/getFilm/{film_title}', response_model=schemas.FilmDetailOut)
+async def get_film(film_title: str, db:Session=Depends(get_db)):
+    film = db.query(models.Film).filter(models.Film.title==film_title).first()
     if not film:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Film does not exist")
     return film
@@ -117,7 +147,6 @@ def get_top_favorite_films(db: Session = Depends(get_db)):
 
     return top_favorite_films
 
-from sqlalchemy import desc
 
 @router.get("/topRatedFilms", response_model=list[dict])
 async def get_top_rated_films(db: Session = Depends(get_db)):
@@ -190,7 +219,7 @@ def get_favorite_films(db: Session = Depends(get_db),current_user: int = Depends
 async def update_film(film_id:int, edit_film: schemas.FilmBase,db:Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
     try:
         film_check = db.query(models.Film).filter(models.Film.title == edit_film.title).first()
-        if film_check != None:
+        if (film_check) and (film_check.id != film_id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Film title conflict")
         film_query = db.query(models.Film).filter(models.Film.id == film_id)
         film = film_query.first()
@@ -224,5 +253,59 @@ async def update_film_status(film_id:int, db:Session = Depends(get_db), current_
 
 #END PUT
         
+#DELETE
+@router.delete("/deleteActor/{film_id}/{actor_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_actor(film_id: int, actor_id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    film = db.query(models.Film).get(film_id)
+
+    if not film:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Film not found")
+
+    actor = db.query(models.Actor).get(actor_id)
+    if not actor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Actor not found")
+
+    # Assuming you have a relationship between films and actors
+    film_actor_query = db.query(models.Film_Actor).filter(models.Film_Actor.film_id == film_id, models.Film_Actor.actor_id == actor_id)
+    film_actor = film_actor_query.first()
+    if not film_actor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Film_Actor not found")
+
+    film_actor_query.delete(synchronize_session=False)      
+
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.delete("/deleteFavoriteFilm/{film_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_favorite_film(film_id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    film = db.query(models.Film).get(film_id)
+
+    if not film:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Film not found")
+
+    # Assuming you have a relationship between films and actors
+    favorite_query = db.query(models.Favorite_Film).filter(models.Favorite_Film.film_id == film_id, models.Favorite_Film.user_id == current_user.id)
+    favorite = favorite_query.first()
+    if not favorite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Favorite not found")
+
+    favorite_query.delete(synchronize_session=False)      
+
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.delete("/deleteAllFavorite", status_code=status.HTTP_204_NO_CONTENT)
+def delete_all_favorite(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    # Assuming you have a relationship between films and actors
+    favorite_query = db.query(models.Favorite_Film).filter(models.Favorite_Film.user_id == current_user.id)
+    favorite_query.delete(synchronize_session=False)      
+
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+#END DELETE
         
 

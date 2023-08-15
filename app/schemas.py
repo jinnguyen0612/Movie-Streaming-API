@@ -37,6 +37,7 @@ class UserOut(BaseModel):
     name: str
     role: int
     created_at: datetime
+    status: int
     class Config:
         orm_mode = True
 
@@ -88,3 +89,7 @@ class Pricing(BaseModel):
     status:bool
 class PricingOut(Pricing):
     id: int
+
+
+class UserFavoriteFilm(BaseModel):
+    film_id: int
