@@ -62,6 +62,27 @@ def add_payment_for_film(pricing_id: int, db: Session = Depends(get_db), current
 
 #END POST
 
+#GET
+@router.get("/getAll")
+async def get_all_payment(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    query = db.query(
+        models.Payment.id.label("id"),
+        models.User.email.label("user_email"),
+        models.Pricing.name.label("pricing_name"),
+        models.Film.title.label("film_name"),
+        models.Payment.pay.label("pay"),
+        models.Payment.status.label("status"),
+        models.Payment.created_at.label("created_at"),
+        models.Payment.end_date.label("end_date")
+    ).outerjoin(models.User, models.Payment.user_id == models.User.id) \
+     .outerjoin(models.Film, models.Payment.film_id == models.Film.id) \
+     .outerjoin(models.Pricing, models.Payment.pricing_id == models.Pricing.id) \
+     .all()
+     
+    return query
+
+#END GET
+
 #PUT
 @router.put('/edit/status/{payment_id}')
 async def update_film_status(payment_id:int, db:Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
@@ -72,7 +93,12 @@ async def update_film_status(payment_id:int, db:Session = Depends(get_db), curre
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="Payment does not exist")
     
-    new_status = not payment.status
+    if payment.status==0:
+        new_status = 1
+        
+    if payment.status==1:
+        new_status = 0
+    
     edit_payment = {"status": new_status}
     
     payment_query.update(edit_payment, synchronize_session=False)

@@ -14,6 +14,10 @@ from datetime import datetime, timedelta
 
 from .. import database,schemas,models,utils,oauth2
 from ..database import get_db
+from ..config import settings
+
+
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 
 conf = ConnectionConfig(
@@ -61,10 +65,9 @@ async def login(user_credentials: OAuth2PasswordRequestForm = Depends(),db: Sess
         "name":user.name,
         "role":role
     }
-    current_time = datetime.now()
-    new_time = current_time + timedelta(minutes=1440)
-    milliseconds = int(new_time.timestamp()) * 1000
-    return {"access_token":access_token, "token_type":"bearer","status":True,"userInfo":userOut,"expiresIn":milliseconds}
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    return {"access_token":access_token, "token_type":"bearer","status":True,"userInfo":userOut,"expiresIn":expire}
 
 
 

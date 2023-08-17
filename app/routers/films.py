@@ -74,6 +74,25 @@ def add_favorite_film(film_id: int, db: Session = Depends(get_db), current_user:
 
     return {"msg": "Film added to favorites"}
 
+@router.post("/addTimeStamp/{film_id}", status_code=status.HTTP_201_CREATED)
+def add_time_film(film_id: int,time: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    film = db.query(models.Film).get(film_id)
+    if not film:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Film not found")
+    checkTime = db.query(models.Stamping_Film).filter(models.Stamping_Film.film_id == film_id, models.Stamping_Film.user_id == current_user.id).first()
+    if checkTime:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Film had been added")
+
+    if time<0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid timestamp value")
+
+    
+    time_stamp = models.Stamping_Film(user_id=current_user.id, film_id=film_id,time_stamping=time)
+    db.add(time_stamp)
+    db.commit()
+
+    return {"msg": "TimeStamp added to favorites"}
+
 @router.post("/addVote/{film_id}", status_code=status.HTTP_201_CREATED)
 def vote_film(film_id: int, vote: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     film = db.query(models.Film).get(film_id)
@@ -123,7 +142,7 @@ async def get_latest_active_films(db: Session = Depends(get_db)):
 
 
 @router.get('/get/{film_id}', response_model=schemas.FilmDetailOut)
-async def get_film(film_id: int, db:Session=Depends(get_db)):
+async def get_film(film_id: int, db:Session=Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
     film = db.query(models.Film).filter(models.Film.id==film_id).first()
     if not film:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Film does not exist")
@@ -212,6 +231,18 @@ def get_favorite_films(db: Session = Depends(get_db),current_user: int = Depends
         )
     return favorite_films
 
+@router.get("/checkVote/{film_id}")
+def check_vote(film_id:int,db: Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
+    voteFilm = db.query(models.Rating_Film).filter(models.Rating_Film.film_id==film_id,models.Rating_Film.user_id==current_user.id).first()
+    if(voteFilm):
+        return {"value":True}
+    else: return {"value":False}
+@router.get("/checkTime/{film_id}")
+def check_time(film_id:int,db: Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
+    timeFilm = db.query(models.Stamping_Film).filter(models.Stamping_Film.film_id==film_id,models.Stamping_Film.user_id==current_user.id).first()
+    if(timeFilm):
+        return {"value":True,"time":timeFilm.time_stamping}
+    else: return {"value":False}
 #END GET
 
 #PUT
@@ -250,6 +281,42 @@ async def update_film_status(film_id:int, db:Session = Depends(get_db), current_
     film_query.update(edit_film, synchronize_session=False)
     db.commit()
     return {"msg": "Change film status success"}
+
+@router.put("/editVote/{film_id}", status_code=status.HTTP_200_OK)
+def edit_vote_film(film_id: int, vote: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    voteFilm_query = db.query(models.Rating_Film).filter(models.Rating_Film.film_id==film_id,models.Rating_Film.user_id==current_user.id)
+    voteFilm = voteFilm_query.first()
+    if voteFilm is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Vote does not exist")
+
+    # Assuming vote should be between 1 and 5
+    if vote < 1 or vote > 5:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid vote value")
+
+    editVote = {"rate":vote}
+    voteFilm_query.update(editVote, synchronize_session=False)
+    db.commit()
+
+    return {"msg": "Change vote successfully"}
+
+@router.put("/editTimeStamp/{film_id}", status_code=status.HTTP_200_OK)
+def edit_time(film_id: int, time: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    timeStamp_query = db.query(models.Stamping_Film).filter(models.Stamping_Film.film_id==film_id,models.Stamping_Film.user_id==current_user.id)
+    timeStamp = timeStamp_query.first()
+    if timeStamp is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="TimeStamp does not exist")
+
+    # Assuming vote should be between 1 and 5
+    if time<0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid value")
+
+    editTime = {"time_stamping":time}
+    timeStamp_query.update(editTime, synchronize_session=False)
+    db.commit()
+
+    return {"msg": "Change time successfully"}
 
 #END PUT
         

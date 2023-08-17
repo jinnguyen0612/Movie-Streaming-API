@@ -48,6 +48,7 @@ class Film(Base):
 
     genre = relationship("Genre", back_populates="film")
     actors = relationship("Film_Actor", back_populates="film")
+    payment = relationship("Payment", back_populates="film")
 
 
 #
@@ -76,6 +77,8 @@ class Pricing(Base):
     days = Column(Numeric, nullable= False)
     status = Column(Boolean, nullable=False, server_default='True') #True: kich hoat, False: vo hieu hoa
     
+    payment = relationship("Payment",back_populates="pricing")
+    
 # Payment of a user
 class Payment(Base):
     __tablename__ = "payment"
@@ -89,6 +92,8 @@ class Payment(Base):
     end_date = Column(TIMESTAMP(timezone=True), nullable=False)
     
     user = relationship("User", back_populates="payment")
+    film = relationship("Film",back_populates="payment")
+    pricing = relationship("Pricing",back_populates="payment")
 
     
 # Table Favorite film/serie

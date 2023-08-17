@@ -34,8 +34,13 @@ async def get_all_Pricing(db:Session = Depends(get_db)):
     pricing = db.query(models.Pricing).all()
     return pricing
 
+@router.get('/getActive',response_model=List[schemas.PricingOut])
+async def get_active_Pricing(db:Session = Depends(get_db)):
+    pricing = db.query(models.Pricing).filter(models.Pricing.status==True).all()
+    return pricing
+
 @router.get('/get/{id}', response_model=schemas.PricingOut)
-async def get_pricing(id: int, db:Session=Depends(get_db)):
+async def get_pricing(id: int, db:Session=Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
     pricing = db.query(models.Pricing).filter(models.Pricing.id==id).first()
     if not pricing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Pricing does not exist")

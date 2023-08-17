@@ -38,6 +38,13 @@ async def get_all_users(db:Session = Depends(get_db),current_user: int = Depends
     users = db.query(models.User).all()
     return users
 
+@router.get('/get/{id}',response_model=List[schemas.UserOut])
+async def get_user(id:int,db:Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
+    user = db.query(models.User).filter(models.User.id == id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User does not exist")
+    return user
+
 @router.get('/getCustomer',response_model=List[schemas.UserOut])
 async def get_all_customer(db:Session = Depends(get_db),current_user: int = Depends(oauth2.get_current_user)):
     customer = db.query(models.User).filter(models.User.role==1).all()
