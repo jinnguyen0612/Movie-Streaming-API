@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from typing import Optional, Text,List
 from datetime import datetime, timedelta
 from decimal import Decimal
+from sqlalchemy import desc
+
 
 
 from ..database import get_db
@@ -78,6 +80,22 @@ async def get_all_payment(db: Session = Depends(get_db), current_user: int = Dep
      .outerjoin(models.Film, models.Payment.film_id == models.Film.id) \
      .outerjoin(models.Pricing, models.Payment.pricing_id == models.Pricing.id) \
      .all()
+     
+    return query
+
+@router.get("/getNewestPayment")
+async def get_newest_payment(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
+    query = db.query(
+        models.Payment.id.label("id"),
+        models.Pricing.name.label("pricing_name"),
+        models.Film.title.label("film_name"),
+        models.Payment.status.label("status"),
+        models.Payment.end_date.label("end_date")
+    ).outerjoin(models.Film, models.Payment.film_id == models.Film.id) \
+    .outerjoin(models.Pricing, models.Payment.pricing_id == models.Pricing.id) \
+    .filter(models.Payment.user_id == current_user.id,models.Payment.status != 0) \
+    .order_by(desc(models.Payment.end_date)) \
+    .first()  
      
     return query
 
