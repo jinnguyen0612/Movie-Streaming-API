@@ -63,7 +63,8 @@ async def login(user_credentials: OAuth2PasswordRequestForm = Depends(),db: Sess
     access_token = oauth2.create_access_token(data={"user_id": str(user.id),"role":role,"status":str(user.status)})
     userOut = {
         "name":user.name,
-        "role":role
+        "role":role,
+        "status":user.status,
     }
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
@@ -121,8 +122,6 @@ async def register(user: schemas.Register, db: Session = Depends(get_db)):
 async def verify(verify_code:str,current_user: int = Depends(oauth2.get_current_user) , db: Session = Depends(get_db)):
     user_query =db.query(models.User).filter(models.User.id == current_user.id)
     stored_user = user_query.first()
-    if stored_user.status != 2:
-        raise HTTPException(status_code=400, detail="Account had been verify")
 
     if (users_db["email"] == stored_user.email and users_db["verify_code"]==verify_code):
         stored_user.status = 1  # Đặt trạng thái người dùng thành đã kích hoạt
