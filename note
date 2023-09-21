@@ -1,0 +1,25 @@
+Client identifier = 800441e7516e4a9c1e4c8af6a951b4f9326c939c
+Client secrets = P8rsQioMUVOcNbCGcp2Cvh1DbCspV9oqUHNmIanjGJHiHlUjQEWFIJCJS3U6g3lcgtCOtvNvoeiymp8qjO4nfeqUJ/9jollYxTRPa3GU7NZa5+1pYxPN6NzriEH3BZ0E
+
+FIX NGHIỆM VỤ 19/07/2023
+
+phim lẻ:
+    - Miễn phí
+    - Cho thuê và giá thuê 1 phim/ngày như nhau
+
+phim bộ:
+    - Miễn phí
+    - Phải áp dụng gói để xem
+
+gói:
+    - Theo tháng
+
+tách vote với tamping
+
+sua vote -> favorite
+
+popular tinh theo so favorite
+
+bo country
+
+upload video khong up duoc video qua nang
