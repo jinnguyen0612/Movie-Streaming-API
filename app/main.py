@@ -1,21 +1,25 @@
 """
-Main
-Author: jinnguyen0612
-Email: hoangha0612.work@gmail.com
+    Main
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from . import models
 from .database import engine
-from .routers import user, auth, films, upload,genres,actors,pricing,payment
-from . config import settings
+from .routers import user, auth, films, upload, genres, actors, pricing, payment, vnpay
+from .config import settings
 from fastapi.middleware.cors import CORSMiddleware
+from .utils import UnicornException
 
 app = FastAPI(title="MOVIE STREAMING API")
 
 # Cấu hình CORS
+# origins = [
+#     "http://localhost:3000",  # Thay thế bằng địa chỉ của ứng dụng React của bạn
+# ]
+
 origins = [
-    "http://localhost:3000",  # Thay thế bằng địa chỉ của ứng dụng React của bạn
+    "https://streaming-movie.vercel.app",
 ]
 
 app.add_middleware(
@@ -37,11 +41,18 @@ app.include_router(pricing.router)
 app.include_router(actors.router)
 app.include_router(payment.router)
 app.include_router(upload.router)
+app.include_router(vnpay.router)
 
 
-
-@app.get('/')
+@app.get("/")
 def root():
     return {"message": "Welcome to my API server"}
 
 
+# Handle Error
+@app.exception_handler(UnicornException)
+async def unicorn_exception_handler(request: Request, exc: UnicornException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": exc.success, "detail": exc.detail},
+    )
